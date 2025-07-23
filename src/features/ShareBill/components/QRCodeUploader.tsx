@@ -1,8 +1,10 @@
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Trash2, UploadCloud } from 'lucide-react'
-import { useRef, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useCallback, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import type { QRCodeItem } from '../types'
+
 // --- QR CODE UPLOADER COMPONENT ---
 interface QRCodeUploaderProps {
   qrCodeList: QRCodeItem[]
@@ -11,43 +13,58 @@ interface QRCodeUploaderProps {
 
 export default function QRCodeUploader({ qrCodeList, setQrCodeList }: QRCodeUploaderProps) {
   const [selectedQRType, setSelectedQRType] = useState<string>('')
+
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const handleFileSelect = (file: File) => {
-    if (!selectedQRType) {
-      alert('Vui lòng chọn loại QR trước khi tải ảnh!')
-      return
-    }
-    if (file && file.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          const newQR: QRCodeItem = {
-            id: Date.now().toString(),
-            type: selectedQRType,
-            imageData: e.target.result as string
-          }
-          setQrCodeList((prevList: QRCodeItem[]) => [...prevList, newQR])
-        }
+  const handleFileSelect = useCallback(
+    (file: File) => {
+      if (!selectedQRType) {
+        alert('Vui lòng chọn loại QR trước khi tải ảnh!')
+        return
       }
-      reader.readAsDataURL(file)
-    }
-  }
+      if (file && file.type.startsWith('image/')) {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            const newQR: QRCodeItem = {
+              id: Date.now().toString(),
+              type: selectedQRType,
+              imageData: e.target.result as string
+            }
+            setQrCodeList((prevList: QRCodeItem[]) => [...prevList, newQR])
+          }
+        }
+        reader.readAsDataURL(file)
+      }
+    },
+    [selectedQRType, setQrCodeList]
+  )
 
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) handleFileSelect(e.target.files[0])
-  }
+  const handleFileChange = useCallback(
+    (e: ChangeEvent<HTMLInputElement>) => {
+      if (e.target.files?.[0]) handleFileSelect(e.target.files[0])
+    },
+    [handleFileSelect]
+  )
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>) => {
+  const handleDrop = useCallback(
+    (e: DragEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0])
+    },
+    [handleFileSelect]
+  )
+
+  const handleDragOver = useCallback((e: DragEvent<HTMLDivElement>) => {
     e.preventDefault()
-    if (e.dataTransfer.files?.[0]) handleFileSelect(e.dataTransfer.files[0])
-  }
+  }, [])
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>) => e.preventDefault()
-
-  const removeQR = (idToRemove: string) => {
-    setQrCodeList((prevList: QRCodeItem[]) => prevList.filter((qr: QRCodeItem) => qr.id !== idToRemove))
-  }
+  const removeQR = useCallback(
+    (idToRemove: string) => {
+      setQrCodeList((prevList: QRCodeItem[]) => prevList.filter((qr: QRCodeItem) => qr.id !== idToRemove))
+    },
+    [setQrCodeList]
+  )
 
   return (
     <div className='space-y-2'>
@@ -82,18 +99,35 @@ export default function QRCodeUploader({ qrCodeList, setQrCodeList }: QRCodeUplo
                 key={qr.id}
                 className='relative group overflow-hidden rounded-md flex flex-col items-center justify-center p-2 border border-gray-600'
               >
-                <span className='text-xs text-gray-400 absolute top-1 left-2 bg-gray-900 px-1 py-0.5 rounded-sm'>
+                <span className='text-xs text-gray-400 absolute top-1 left-2 bg-gray-900 px-1 py-0.5 rounded-sm z-10'>
                   {qr.type}
                 </span>
-                <img
-                  src={qr.imageData}
-                  alt={`${qr.type} QR Code`}
-                  className='object-contain max-h-[150px] max-w-full rounded-md'
-                />
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <img
+                      src={qr.imageData}
+                      alt={`${qr.type} QR Code`}
+                      className='object-contain max-h-[150px] max-w-full rounded-md cursor-pointer '
+                    />
+                  </DialogTrigger>
+                  <DialogContent className='bg-gray-800/90 rounded-lg !max-w-max min-w-[50vw] max-h-[90vh] p-6 text-white'>
+                    <DialogHeader>
+                      <DialogTitle className='text-lg font-semibold text-white'>QR Code {qr.type} </DialogTitle>
+                    </DialogHeader>
+
+                    <div className='flex flex-col items-center'>
+                      <img
+                        src={qr.imageData}
+                        alt={`${qr.type} QR Code`}
+                        className='object-contain max-h-[70vh] max-w-[70vw] rounded-md'
+                      />
+                    </div>
+                  </DialogContent>
+                </Dialog>
                 <Button
                   variant='destructive'
                   size='icon'
-                  className='absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/80 hover:bg-red-600'
+                  className='absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/80 hover:bg-red-600 z-30'
                   onClick={() => removeQR(qr.id)}
                 >
                   <Trash2 className='h-4 w-4' />

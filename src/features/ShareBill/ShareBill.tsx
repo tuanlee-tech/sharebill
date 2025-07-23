@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import BillInput from './components/BillInput'
 import MembersTable from './components/MembersTable'
 import SummaryPayment from './components/SummaryPayment'
@@ -44,13 +44,15 @@ export default function ShareBill() {
     [totalOriginalOrder, finalFoodTotal, perHeadServiceFee]
   )
 
-  const totalReceived = members.reduce((sum, member) => {
-    if (member.hasPaid) {
-      const { total } = calculateShare(member.order)
-      return sum + total
-    }
-    return sum
-  }, 0)
+  const totalReceived = useMemo(() => {
+    return members.reduce((sum, member) => {
+      if (member.hasPaid) {
+        const { total } = calculateShare(member.order)
+        return sum + total
+      }
+      return sum
+    }, 0)
+  }, [members, calculateShare])
 
   // --- useEffect để cập nhật thời gian lưu ---
   useEffect(() => {
